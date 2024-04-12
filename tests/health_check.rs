@@ -6,13 +6,13 @@
 #[tokio::test]
 async fn health_check_works() {
     // Arrange(준비)
-    spawn_app().await.expect("Failed to spawn our app.");
+    let address = spawn_app();
     // 'reqwest'를 사용해서 애플리케이션에 대한 HTTP 요청을 수행한다.
     let client = reqwest::Client::new();
 
     // Act(조작)
     let response = client
-        .get("http://127.0.0.1:8000/health_check")
+        .get(&format!("{}/health_check", &address))
         .send()
         .await
         .expect("Failed to execute request.");
@@ -22,7 +22,15 @@ async fn health_check_works() {
     assert_eq!(Some(0), response.content_length());
 }
 
-// 백그라운드에서 애플리케이션을 구동한다.
-async fn spawn_app() -> std::io::Result<()> {
-    zero2prod::run().await
+fn spawn_app() -> String {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0")
+        .expect("Failed to bind to random port.");
+
+    // OS가 할당한 포트 번호를 추출한다.
+    let port = listener.local_addr().unwrap().port();
+    let server = zero2prod::run(listener).expect("Failed to bind address.");
+    let _ = tokio::spawn(server);
+
+    // 애플리케이션 주소를 호출자에게 반환한다.
+    format!("http://127.0.0.1:{}", port)
 }

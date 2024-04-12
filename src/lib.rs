@@ -1,5 +1,6 @@
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use actix_web::dev::Server;
+use std::net::TcpListener;
 
 async fn health_check() -> impl Responder {
     HttpResponse::Ok().finish()
@@ -8,12 +9,12 @@ async fn health_check() -> impl Responder {
 // 'run'을 public'으로 마크해야한다.
 // 'run'은 더 이상 바이너리 엔트리 포인트가 아니므로, proc-macro 주문 없이
 // 내부적으로 await를 사용하지 않는다면 메서드에서 async를 제거한다.
-pub fn run() -> Result<Server, std::io::Error> {
+pub fn run(listener: TcpListener) -> Result<Server, std::io::Error> {
     let server = HttpServer::new(|| {
         App::new()
         .route("/health_check", web::get().to(health_check))
     })
-    .bind("127.0.0.1:8000")?
+    .listen(listener)?
     .run();
 
     Ok(server)
